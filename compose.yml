@@ -25,7 +25,7 @@ services:
 
 
   db:
-    image: postgres:15
+    image: postgres:17
     container_name: sonarqube_db
     environment:
       POSTGRES_USER: sonar
