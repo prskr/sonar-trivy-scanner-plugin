@@ -50,6 +50,36 @@ jobs:
       - name: Build with Maven
         run: ./mvnw -B package --file pom.xml -Dproject.version=${{ steps.determine_version.outputs.fullSemVer }}
 
+      - name: Generate pre-release changelog
+        uses: orhun/git-cliff-action@v3
+        if: github.ref_type != 'tag'
+        with:
+          config: cliff.toml
+          args: --verbose --unreleased
+        env:
+          OUTPUT: target/CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Generate release changelog
+        uses: orhun/git-cliff-action@v3
+        if: github.ref_type == 'tag'
+        with:
+          config: cliff.toml
+          args: --verbose --latest
+        env:
+          OUTPUT: target/CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag' || github.ref_name == 'main'
+        with:
+          name: ${{ steps.determine_version.outputs.fullSemVer }}
+          body_path: target/CHANGELOG.md
+          prerelease: ${{ github.ref_type != 'tag' }}
+          fail_on_unmatched_files: true
+          files: |
+            target/sonar-trivy-scanner-plugin-${{ steps.determine_version.outputs.fullSemVer }}.jar
 
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v5
