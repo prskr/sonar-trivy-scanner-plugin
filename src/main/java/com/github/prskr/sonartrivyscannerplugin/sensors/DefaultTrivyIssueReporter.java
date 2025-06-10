@@ -15,6 +15,7 @@ import org.sonar.api.utils.log.Loggers;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @ScannerSide
@@ -50,9 +51,16 @@ public class DefaultTrivyIssueReporter implements TrivyIssuerReporter {
                     var physicalLocation = location.getPhysicalLocation();
                     region = physicalLocation.getRegion();
 
+                    if (region != null) {
+                        // Ensure start and end lines/columns are set correctly
+                        if (Objects.equals(region.getStartLine(), region.getEndLine()) && Objects.equals(region.getStartColumn(), region.getEndColumn())) {
+                            region.setEndColumn(region.getStartColumn() + 1);
+                        }
+                    }
+
                     var artifactLocation = physicalLocation.getArtifactLocation();
                     final String issueFileUri = artifactLocation.getUri();
-                    issueFile = sensorContext.fileSystem().inputFile(f -> f.filename().equals(issueFileUri));
+                    issueFile = sensorContext.fileSystem().inputFile(f -> f.toString().equals(issueFileUri));
                 }
 
                 LOGGER.info("Processing rule: {}", ruleId);
