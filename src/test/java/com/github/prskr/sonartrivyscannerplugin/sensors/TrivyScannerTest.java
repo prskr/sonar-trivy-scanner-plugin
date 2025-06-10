@@ -2,6 +2,7 @@ package com.github.prskr.sonartrivyscannerplugin.sensors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.prskr.sonartrivyscannerplugin.trivy.SarifSchema210;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

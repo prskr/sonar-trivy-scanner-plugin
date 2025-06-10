@@ -10,9 +10,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,7 +43,7 @@ public class TrivyScannerFetcherTest {
     @Disabled
     void testDownloadTrivyScanner() throws URISyntaxException, IOException, InterruptedException {
         var executablePath = fetcher.trivyScannerBinaryPath(null);
-        assertTrue(executablePath.toFile().exists(), "The downloaded Trivy scanner executable does not exist.");
+        assertTrue(Files.exists(Path.of(executablePath)), "The downloaded Trivy scanner executable does not exist.");
     }
 
     @ParameterizedTest

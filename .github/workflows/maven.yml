@@ -23,14 +23,33 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.2.1
+        with:
+          versionSpec: '6.3.x'
+
+      - name: Determine Version
+        id: determine_version # step id used as a reference for output values
+        uses: gittools/actions/gitversion/execute@v3.2.1
+
+      - name: Verify
+        run: ./mvnw verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=prskr_sonar-trivy-scanner-plugin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       - name: Build with Maven
-        run: mvn -B compile sonar-packaging:sonar-plugin --file pom.xml
+        run: ./mvnw -B package --file pom.xml -Dproject.version=${{ steps.determine_version.outputs.fullSemVer }}
+
 
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v5
