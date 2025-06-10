@@ -33,32 +33,18 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3.2.1
-        with:
-          versionSpec: '6.3.x'
-
-      - name: Determine Version
-        id: determine_version # step id used as a reference for output values
-        uses: gittools/actions/gitversion/execute@v3.2.1
-
       - name: Verify
         run: ./mvnw verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=prskr_sonar-trivy-scanner-plugin
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Build with Maven
-        run: ./mvnw -B package --file pom.xml -Dproject.version=${{ steps.determine_version.outputs.fullSemVer }}
-
-      - name: Generate pre-release changelog
-        uses: orhun/git-cliff-action@v3
+      - name: Package artifact
         if: github.ref_type != 'tag'
-        with:
-          config: cliff.toml
-          args: --verbose --unreleased
-        env:
-          OUTPUT: target/CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
+        run: ./mvnw -B package --file pom.xml
+
+      - name: Package release artifact
+        if: github.ref_type != 'tag'
+        run: ./mvnw -B package --file pom.xml -Dproject.version=${{ github.ref }}
 
       - name: Generate release changelog
         uses: orhun/git-cliff-action@v3
@@ -72,14 +58,12 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag' || github.ref_name == 'main'
+        if: github.ref_type == 'tag'
         with:
-          name: ${{ steps.determine_version.outputs.fullSemVer }}
           body_path: target/CHANGELOG.md
-          prerelease: ${{ github.ref_type != 'tag' }}
           fail_on_unmatched_files: true
           files: |
-            target/sonar-trivy-scanner-plugin-${{ steps.determine_version.outputs.fullSemVer }}.jar
+            target/sonar-trivy-scanner-plugin-${{ github.ref }}.jar
 
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v5
