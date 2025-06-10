@@ -23,7 +23,7 @@ public class TrivyScanner implements ProjectSensor {
         sensorDescriptor.name("Trivy-Scanner");
     }
 
-    public void execute(SensorContext sensorContext) {
+    public void execute(SensorContext sensorContext)  {
         try {
             var scanRequest = new TrivyRunRequest(
                     sensorContext.fileSystem().baseDir(),

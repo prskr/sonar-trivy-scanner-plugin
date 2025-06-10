@@ -35,8 +35,11 @@ public class TrivyBinaryRunner implements TrivyRunner {
 
         try {
             trivyScannerPath = this.trivyScannerFetcher.trivyScannerBinaryPath(null);
-        } catch (URISyntaxException | IOException | RuntimeException | InterruptedException e) {
+        } catch (URISyntaxException | IOException | RuntimeException e) {
             throw new TrivyRunnerException("Error while resolving Trivy scanner executable path", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TrivyRunnerException("Trivy scanner fetch was interrupted", e);
         }
 
         int exitCode;
@@ -77,8 +80,11 @@ public class TrivyBinaryRunner implements TrivyRunner {
                 throw new TrivyRunnerException("Trivy scan timed out after 5 minutes");
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             throw new TrivyRunnerException("Error while executing Trivy scan", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TrivyRunnerException("Trivy scan was interrupted", e);
         }
 
         try {
