@@ -9,5 +9,6 @@ import org.sonar.api.Plugin;
 public class TrivyPlugin implements Plugin {
     public void define(Context context) {
         context.addExtensions(TrivyScannerFetcher.class, TrivyBinaryRunner.class, DefaultTrivyIssueReporter.class, TrivyScanner.class);
+        context.addExtensions(TrivyScannerConfiguration.getPropertyDefinitions());
     }
 }

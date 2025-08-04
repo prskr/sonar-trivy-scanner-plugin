@@ -18,6 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
+
+import static com.github.prskr.sonartrivyscannerplugin.TrivyScannerConstants.TRIVY_VERSION_LATEST;
 
 @ScannerSide
 public class TrivyScannerFetcher {
@@ -64,22 +67,21 @@ public class TrivyScannerFetcher {
      * If the version is null or empty and the binary is not found in the system PATH,
      * it fetches the latest version from GitHub.
      *
-     * @param version The version of Trivy to download, or null to either use the system installed one or fetch the latest one.
+     * @param optionalVersion The version of Trivy to download, or null to either use the system installed one or fetch the latest one.
      * @return The path to the resolved Trivy scanner binary.
      * @throws URISyntaxException If the URI is malformed.
      * @throws IOException If an I/O error occurs during download.
      * @throws InterruptedException If the download process is interrupted.
      */
-    public final String trivyScannerBinaryPath(@Nullable String version) throws URISyntaxException, IOException, InterruptedException {
-        if (version == null || version.isEmpty()) {
-
+    public final String trivyScannerBinaryPath(Optional<String> optionalVersion) throws URISyntaxException, IOException, InterruptedException {
+        if (optionalVersion.isEmpty() || optionalVersion.get().isEmpty() || optionalVersion.get().equals(TRIVY_VERSION_LATEST)) {
             var binaryName = osType.systemDependentBinaryName(TRIVY_BINARY_BASE_NAME);
             var existingBinary = lookPath(binaryName);
             if (existingBinary != null) {
                 return existingBinary;
             }
         }
-        version = ensureTrivyVersion(version);
+        var version = sanitizeTrivyVersion(optionalVersion);
 
         var outPath = Files.createDirectories(Path.of(SystemUtils.JAVA_IO_TMPDIR, TRIVY_BINARY_DIR_NAME, version));
         var executablePath = outPath.resolve(osType.systemDependentBinaryName(TRIVY_BINARY_BASE_NAME));
@@ -113,7 +115,7 @@ public class TrivyScannerFetcher {
     }
 
     public final String determineTrivyDownloadUrl(OSType osType, String osArch, String version)  {
-        version = ensureTrivyVersion(version);
+        version = sanitizeTrivyVersion(Optional.of(version));
 
         var downloadURI = TRIVY_DOWNLOAD_URLS
                 .getOrDefault(osType, Map.of())
@@ -141,8 +143,9 @@ public class TrivyScannerFetcher {
         return null;
     }
 
-    private  String ensureTrivyVersion(@Nullable String version) {
-        if (version == null || version.isEmpty()) {
+    private  String sanitizeTrivyVersion(Optional<String> optionalVersion) {
+        var version = optionalVersion.orElse("");
+        if (optionalVersion.isEmpty() || optionalVersion.get().isEmpty()) {
             try {
                 version = getLatestVersion().tagName();
             } catch (IOException | InterruptedException | URISyntaxException e) {

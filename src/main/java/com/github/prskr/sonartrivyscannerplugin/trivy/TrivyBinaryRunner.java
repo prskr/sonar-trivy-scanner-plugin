@@ -2,6 +2,8 @@ package com.github.prskr.sonartrivyscannerplugin.trivy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.prskr.sonartrivyscannerplugin.TrivyScannerConfiguration;
+import com.github.prskr.sonartrivyscannerplugin.TrivyScannerConstants;
 import org.sonar.api.scanner.ScannerSide;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -14,16 +16,19 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.sonar.api.config.Configuration;
 
 @ScannerSide
 public class TrivyBinaryRunner implements TrivyRunner {
 
     private static final Logger LOGGER = Loggers.get(TrivyBinaryRunner.class);
     private final TrivyScannerFetcher trivyScannerFetcher;
+    private final Configuration configuration;
     private final ObjectMapper mapper;
 
-    public TrivyBinaryRunner(TrivyScannerFetcher trivyScannerFetcher) {
+    public TrivyBinaryRunner(TrivyScannerFetcher trivyScannerFetcher, Configuration config) {
         this.trivyScannerFetcher = trivyScannerFetcher;
+        this.configuration = config;
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
     }
@@ -34,7 +39,7 @@ public class TrivyBinaryRunner implements TrivyRunner {
         String trivyScannerPath;
 
         try {
-            trivyScannerPath = this.trivyScannerFetcher.trivyScannerBinaryPath(null);
+            trivyScannerPath = this.trivyScannerFetcher.trivyScannerBinaryPath(this.configuration.get(TrivyScannerConfiguration.TRIVY_BINARY_VERSION));
         } catch (URISyntaxException | IOException | RuntimeException e) {
             throw new TrivyRunnerException("Error while resolving Trivy scanner executable path", e);
         } catch (InterruptedException e) {
@@ -53,21 +58,21 @@ public class TrivyBinaryRunner implements TrivyRunner {
                 trivyOutputPath
         );
 
+        var trivyCommandBuilder = CommandBuilder.builder(trivyScannerPath)
+                .withPositionalArgument("fs")
+                .withFlag("format", "sarif")
+                .withFlag("output", trivyOutputPath.toString())
+                .withFlag("quiet")
+                .withFlag("skip-version-check")
+                .withFlag("timeout", "5m");
+
+        trivyCommandBuilder = FlagsProcessor.processFlags(trivyCommandBuilder, this.configuration)
+                .withPositionalArgument(request.targetDirectory().getAbsolutePath());
+
+
         try {
             trivyScanProcess = new ProcessBuilder()
-                    .command(
-                            trivyScannerPath,
-                            "fs",
-                            "--format=sarif",
-                            String.format("--output=%s", trivyOutputPath),
-                            "--quiet",
-                            "--timeout=5m",
-                            "--disable-telemetry",
-                            "--scanners=vuln,misconfig,secret",
-                            "--skip-version-check",
-                            request.targetDirectory().getAbsolutePath()
-
-                    )
+                    .command(trivyCommandBuilder.build())
                     .directory(request.targetDirectory())
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .redirectError(ProcessBuilder.Redirect.PIPE)
